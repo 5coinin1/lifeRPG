@@ -177,6 +177,13 @@ class GuildService {
     required List<String> heroIds,
   }) async {
     final docRef = _db.collection('guild_quests').doc();
+    final now = DateTime.now();
+    final questDeadline = now.add(Duration(days: daysAvailable));
+    // Cửa sổ bỏ phiếu mặc định 24h, nhưng không bao giờ vượt quá hạn quest.
+    final voteDeadlineCandidate = now.add(const Duration(hours: 24));
+    final voteDeadline = voteDeadlineCandidate.isAfter(questDeadline)
+        ? questDeadline
+        : voteDeadlineCandidate;
     final quest = GuildQuestModel(
       id: docRef.id,
       guildId: guildId,
@@ -186,8 +193,9 @@ class GuildService {
       attribute: attribute,
       targetAmount: targetAmount,
       unit: unit,
-      deadline: DateTime.now().add(Duration(days: daysAvailable)),
-      createdAt: DateTime.now(),
+      deadline: questDeadline,
+      voteDeadline: voteDeadline,
+      createdAt: now,
       expReward: 150, // guild EXP reward
       heroExpReward: 50, // hero EXP reward
       heroGoldReward: 100, // hero gold reward
@@ -202,9 +210,30 @@ class GuildService {
     await docRef.set(quest.toMap());
   }
 
+  /// Tập hợp guardianId đủ điều kiện bỏ phiếu của một guild
+  /// (gộp từ danh sách trong guild + các guardian có guildId trỏ tới guild này).
+  Future<Set<String>> _eligibleGuardianIds(
+    String guildId,
+    Map<String, dynamic> guildData,
+  ) async {
+    final ids = <String>{
+      ...List<String>.from(guildData['guardianIds'] ?? []),
+    };
+    final guardiansByProfile = await _db
+        .collection('guardians')
+        .where('guildId', isEqualTo: guildId)
+        .get();
+    ids.addAll(guardiansByProfile.docs.map((doc) => doc.id));
+    return ids;
+  }
+
   // ── VOTE QUEST ────────────────────────────────────────────────────────────────
-  /// Vote approve/reject cho quest.
-  /// Khi vote ≥ 70% approve → auto approve, snapshot heroIds, chia requiredPerHero.
+  /// Ghi nhận phiếu approve/reject của một guardian.
+  ///
+  /// KHÔNG quyết định trạng thái quest ngay khi có 1 phiếu. Quest chỉ được
+  /// chốt (duyệt hoặc loại) khi: tất cả guardian đã bỏ phiếu, HOẶC đã quá
+  /// hạn bỏ phiếu (voteDeadline). Lúc đó nếu tỉ lệ approve > 70% thì duyệt,
+  /// ngược lại quest bị loại.
   Future<void> voteQuest({
     required String guildId,
     required String questId,
@@ -216,15 +245,7 @@ class GuildService {
     final guildData = guildDoc.data();
     if (guildData == null) throw Exception('Guild not found.');
 
-    final guardianIds = <String>{
-      ...List<String>.from(guildData['guardianIds'] ?? []),
-    };
-    final guardiansByProfile = await _db
-        .collection('guardians')
-        .where('guildId', isEqualTo: guildId)
-        .get();
-    guardianIds.addAll(guardiansByProfile.docs.map((doc) => doc.id));
-
+    final guardianIds = await _eligibleGuardianIds(guildId, guildData);
     if (!guardianIds.contains(guardianId)) {
       throw Exception('Only guild guardians can vote on guild quests.');
     }
@@ -249,35 +270,82 @@ class GuildService {
       });
     }
 
-    // Check threshold
+    // Đọc lại trạng thái phiếu rồi chỉ chốt khi vòng bỏ phiếu đã kết thúc.
     final questDoc = await questRef.get();
     final data = questDoc.data()!;
-    final upvotes = List<String>.from(
-      data['upvotes'] ?? [],
-    ).where(guardianIds.contains).toList();
-    final downvotes = List<String>.from(
-      data['downvotes'] ?? [],
-    ).where(guardianIds.contains).toList();
+    if (data['isApproved'] == true || data['isRejected'] == true) return;
+    await _maybeFinalizeVoting(
+      questRef: questRef,
+      guildId: guildId,
+      guildData: guildData,
+      eligibleGuardianIds: guardianIds,
+      questData: data,
+    );
+  }
+
+  /// Chốt trạng thái quest nếu đã hết hạn bỏ phiếu mà vẫn chưa được quyết định.
+  /// Gọi từ UI khi tải danh sách quest (để xử lý trường hợp không ai vote thêm
+  /// sau khi hết hạn).
+  Future<void> finalizeQuestVotingIfDue({
+    required String guildId,
+    required String questId,
+  }) async {
+    final questRef = _db.collection('guild_quests').doc(questId);
+    final questDoc = await questRef.get();
+    final data = questDoc.data();
+    if (data == null) return;
     if (data['isApproved'] == true || data['isRejected'] == true) return;
 
-    final totalEligibleGuardians = guardianIds.length;
-    final percent = totalEligibleGuardians > 0
-        ? upvotes.length / totalEligibleGuardians
-        : 0.0;
+    final voteDeadline = (data['voteDeadline'] as Timestamp?)?.toDate();
+    if (voteDeadline == null || DateTime.now().isBefore(voteDeadline)) return;
+
+    final guildDoc = await _db.collection('guilds').doc(guildId).get();
+    final guildData = guildDoc.data();
+    if (guildData == null) return;
+    final guardianIds = await _eligibleGuardianIds(guildId, guildData);
+    await _maybeFinalizeVoting(
+      questRef: questRef,
+      guildId: guildId,
+      guildData: guildData,
+      eligibleGuardianIds: guardianIds,
+      questData: data,
+    );
+  }
+
+  /// Đánh giá điều kiện kết thúc bỏ phiếu và chốt trạng thái nếu đủ điều kiện.
+  Future<void> _maybeFinalizeVoting({
+    required DocumentReference<Map<String, dynamic>> questRef,
+    required String guildId,
+    required Map<String, dynamic> guildData,
+    required Set<String> eligibleGuardianIds,
+    required Map<String, dynamic> questData,
+  }) async {
+    final totalEligible = eligibleGuardianIds.length;
+    final upvotes = List<String>.from(questData['upvotes'] ?? [])
+        .where(eligibleGuardianIds.contains)
+        .toSet();
+    final downvotes = List<String>.from(questData['downvotes'] ?? [])
+        .where(eligibleGuardianIds.contains)
+        .toSet();
+    final votedCount = upvotes.length + downvotes.length;
+
+    final voteDeadline = (questData['voteDeadline'] as Timestamp?)?.toDate();
+    final deadlinePassed =
+        voteDeadline != null && DateTime.now().isAfter(voteDeadline);
+    final everyoneVoted = totalEligible > 0 && votedCount >= totalEligible;
+
+    // Chưa kết thúc bỏ phiếu → giữ nguyên trạng thái VOTING.
+    if (!everyoneVoted && !deadlinePassed) return;
+
+    final percent = totalEligible > 0 ? upvotes.length / totalEligible : 0.0;
     if (percent > 0.7) {
       await _activateQuest(
         guildId: guildId,
-        questId: questId,
+        questId: questRef.id,
         guildData: guildData,
-        questData: data,
+        questData: questData,
       );
-      return;
-    }
-
-    final rejectPercent = totalEligibleGuardians > 0
-        ? downvotes.length / totalEligibleGuardians
-        : 0.0;
-    if (rejectPercent >= 0.3) {
+    } else {
       await questRef.update({
         'isRejected': true,
         'rejectionReason': 'vote',

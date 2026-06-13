@@ -146,6 +146,18 @@ class _GuildDashboardScreenState extends State<GuildDashboardScreen> {
               _loading = false;
             });
           }
+          // Chốt các quest đã hết hạn bỏ phiếu nhưng chưa được quyết định.
+          final now = DateTime.now();
+          for (final q in quests) {
+            if (!q.isApproved &&
+                !q.isRejected &&
+                now.isAfter(q.voteDeadline)) {
+              GuildService().finalizeQuestVotingIfDue(
+                guildId: q.guildId,
+                questId: q.id,
+              );
+            }
+          }
         });
   }
 
@@ -874,9 +886,31 @@ class _GuildDashboardScreenState extends State<GuildDashboardScreen> {
     );
   }
 
-  void _showCreateEventDialog() {
+  Future<void> _showCreateEventDialog() async {
+    // Tải danh sách boss từ database (collection `bosses`) để chọn.
+    var bosses = <({String id, String name})>[];
+    try {
+      final snap = await FirebaseFirestore.instance.collection('bosses').get();
+      bosses = snap.docs
+          .map(
+            (d) => (
+              id: d.id,
+              name: (d.data()['name'] as String?)?.toUpperCase() ?? d.id,
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    } catch (_) {}
+    // Fallback nếu DB trống/đọc lỗi.
+    if (bosses.isEmpty) {
+      bosses = [
+        (id: BossRaidService.defaultBossId, name: 'PROCRASTINATION DRAGON'),
+      ];
+    }
+    if (!mounted) return;
+
     String eventType = 'boss_raid';
-    String bossId = BossRaidService.defaultBossId;
+    String bossId = bosses.first.id;
 
     const fieldDecoration = InputDecoration(
       filled: true,
@@ -919,26 +953,42 @@ class _GuildDashboardScreenState extends State<GuildDashboardScreen> {
                   if (value != null) setS(() => eventType = value);
                 },
               ),
-              const SizedBox(height: 12),
-              // Chọn boss — gồm boss test máu thấp để mô phỏng boss chết nhanh.
-              DropdownButtonFormField<String>(
-                initialValue: bossId,
-                decoration: fieldDecoration,
-                dropdownColor: const Color(0xFFFCF9F0),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'procrastination_dragon',
-                    child: Text('PROCRASTINATION DRAGON'),
+              // Chọn boss chỉ hiện khi loại sự kiện là Boss Raid.
+              if (eventType == 'boss_raid') ...[
+                const SizedBox(height: 12),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'SELECT BOSS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF7F7663),
+                      letterSpacing: 1,
+                    ),
                   ),
-                  DropdownMenuItem(
-                    value: 'test_dummy_boss',
-                    child: Text('TEST DUMMY (LOW HP)'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setS(() => bossId = value);
-                },
-              ),
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: bossId,
+                  isExpanded: true,
+                  decoration: fieldDecoration,
+                  dropdownColor: const Color(0xFFFCF9F0),
+                  items: [
+                    for (final b in bosses)
+                      DropdownMenuItem(
+                        value: b.id,
+                        child: Text(
+                          b.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setS(() => bossId = value);
+                  },
+                ),
+              ],
             ],
           ),
           actions: [

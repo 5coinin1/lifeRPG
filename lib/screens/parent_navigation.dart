@@ -9,6 +9,7 @@ import 'guild_entry_screen.dart';
 import '../services/auth_service.dart';
 import '../models/guardian_model.dart';
 import 'login_screen.dart';
+import 'account_settings_screen.dart';
 
 class ParentNavigation extends StatefulWidget {
   const ParentNavigation({Key? key}) : super(key: key);
@@ -243,6 +244,27 @@ class _ParentArchiveScreenState extends State<_ParentArchiveScreen> {
                   ),
                   const SizedBox(height: 40),
 
+                  _buildSection(
+                    title: 'MY ACCOUNT',
+                    titleBg: const Color(0xFF1C1C17),
+                    titleColor: Colors.white,
+                    children: [
+                      _buildMenuItem(
+                        icon: Icons.manage_accounts,
+                        label: 'Account settings',
+                        iconColor: const Color(0xFF1C1C17),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AccountSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
                   _buildSection(
                     title: 'FAMILY ACCESS',
                     titleBg: const Color(0xFF77574D),

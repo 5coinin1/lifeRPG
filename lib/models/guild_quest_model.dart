@@ -10,6 +10,7 @@ class GuildQuestModel {
   final int targetAmount; // Total amount required for the guild
   final String unit; // e.g., "pushups", "pages"
   final DateTime deadline;
+  final DateTime voteDeadline; // Hạn chót để các guardian bỏ phiếu
   final DateTime createdAt;
   final int expReward; // Guild EXP reward (default 150)
   final int heroExpReward; // Hero EXP reward (default 50)
@@ -49,6 +50,7 @@ class GuildQuestModel {
     required this.targetAmount,
     required this.unit,
     required this.deadline,
+    required this.voteDeadline,
     required this.createdAt,
     required this.expReward,
     this.heroExpReward = 50,
@@ -68,6 +70,8 @@ class GuildQuestModel {
   });
 
   factory GuildQuestModel.fromMap(Map<String, dynamic> map, String id) {
+    final createdAt =
+        (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
     return GuildQuestModel(
       id: id,
       guildId: map['guildId'] as String? ?? '',
@@ -78,7 +82,10 @@ class GuildQuestModel {
       targetAmount: map['targetAmount'] as int? ?? 0,
       unit: map['unit'] as String? ?? '',
       deadline: (map['deadline'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // Doc cũ chưa có voteDeadline → mặc định 1 ngày kể từ lúc tạo
+      voteDeadline: (map['voteDeadline'] as Timestamp?)?.toDate() ??
+          createdAt.add(const Duration(days: 1)),
+      createdAt: createdAt,
       expReward: map['expReward'] as int? ?? 150,
       heroExpReward: map['heroExpReward'] as int? ?? 50,
       heroGoldReward: map['heroGoldReward'] as int? ?? 100,
@@ -113,6 +120,7 @@ class GuildQuestModel {
       'targetAmount': targetAmount,
       'unit': unit,
       'deadline': Timestamp.fromDate(deadline),
+      'voteDeadline': Timestamp.fromDate(voteDeadline),
       'createdAt': Timestamp.fromDate(createdAt),
       'expReward': expReward,
       'heroExpReward': heroExpReward,
@@ -141,6 +149,7 @@ class GuildQuestModel {
     int? targetAmount,
     String? unit,
     DateTime? deadline,
+    DateTime? voteDeadline,
     int? expReward,
     int? heroExpReward,
     int? heroGoldReward,
@@ -167,6 +176,7 @@ class GuildQuestModel {
       targetAmount: targetAmount ?? this.targetAmount,
       unit: unit ?? this.unit,
       deadline: deadline ?? this.deadline,
+      voteDeadline: voteDeadline ?? this.voteDeadline,
       createdAt: createdAt,
       expReward: expReward ?? this.expReward,
       heroExpReward: heroExpReward ?? this.heroExpReward,

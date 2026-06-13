@@ -227,11 +227,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 32),
 
-                  // --- LIVE PREVIEW BOX ---
-                  _buildLivePreviewBox(),
-
-                  const SizedBox(height: 24),
-
                   // --- ADVANTAGE / FEATURES LIST ---
                   _buildFeaturesList(),
 
@@ -793,93 +788,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   letterSpacing: 1.0,
                 ),
               ),
-      ),
-    );
-  }
-
-  // --- LIVE PREVIEW BOX ---
-  Widget _buildLivePreviewBox() {
-    final String label = _isHeroMode ? 'BEGIN YOUR LEGEND' : 'THE ARCHIVE OF GUARDIANS';
-    
-    // Grayscale photo of vintage library (Hero) / Warm historic library cathedral (Guardian)
-    final String imageUrl = _isHeroMode
-        ? 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&q=80&w=600'
-        : 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600';
-
-    return Container(
-      height: 190,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C17),
-        border: Border.all(color: const Color(0xFF1C1C17), width: 3),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0xFF1C1C17),
-            offset: Offset(4, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Grayscale filtered network image
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              _isHeroMode ? Colors.grey : Colors.amber.withOpacity(0.15),
-              _isHeroMode ? BlendMode.saturation : BlendMode.colorBurn,
-            ),
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800]),
-            ),
-          ),
-          // Dark overlay gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.black.withOpacity(0.7), Colors.transparent],
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-              ),
-            ),
-          ),
-          // Top live preview small tag
-          Positioned(
-            top: 10,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                color: Colors.black.withOpacity(0.6),
-                child: Text(
-                  'LIVE PREVIEW: ARCHIVES OF SUNSTONE',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Bottom large text
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: Text(
-              label,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

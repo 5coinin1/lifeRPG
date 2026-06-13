@@ -368,12 +368,6 @@ class _HeroScreenState extends State<HeroScreen> {
                         child: _buildFamilyJoinSection(),
                       ),
                     if (hero.guardianId == null) const SizedBox(height: 24),
-
-                    // --- RECENT CHRONICLES ---
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: _buildChroniclesSection(),
-                    ),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -854,89 +848,6 @@ class _HeroScreenState extends State<HeroScreen> {
         setState(() => _isLinking = false);
       }
     }
-  }
-
-  // --- RECENT CHRONICLES ---
-  Widget _buildChroniclesSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F3EA), // Container base layer
-        border: Border.all(color: const Color(0xFF1C1C17), width: 3),
-      ),
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.history_edu, color: Color(0xFF1C1C17), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                "RECENT CHRONICLES",
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xFF1C1C17),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildChronicleItem(
-            "Defeated Shadow Stalker in the Whispering Woods.",
-            "2 HOURS AGO",
-            const Color(0xFFBA1A1A),
-          ),
-          const Divider(height: 20, color: Color(0xFFDCD8CF), thickness: 1.5),
-          _buildChronicleItem(
-            "Earned 500 Gold from Daily Commission.",
-            "5 HOURS AGO",
-            const Color(0xFFD4AF37),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChronicleItem(
-    String description,
-    String timeAgo,
-    Color sideColor,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Hard vertical line accent
-        Container(width: 3, height: 36, color: sideColor),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                description,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF1C1C17),
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                timeAgo,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF7F7663),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   // --- UTILS ---

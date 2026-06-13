@@ -340,6 +340,52 @@ class AuthService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // QUẢN LÝ TÀI KHOẢN
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Đổi tên hiển thị. Cập nhật đồng bộ ở accounts + heroes/guardians.
+  static Future<void> updateDisplayName({
+    required String uid,
+    required UserRole role,
+    required String newDisplayName,
+  }) async {
+    final name = newDisplayName.trim();
+    if (name.isEmpty) {
+      throw Exception('Tên hiển thị không được để trống.');
+    }
+
+    final batch = _db.batch();
+    batch.update(_accounts.doc(uid), {'displayName': name});
+    if (role == UserRole.guardian) {
+      batch.update(_guardians.doc(uid), {'displayName': name});
+    } else {
+      batch.update(_heroes.doc(uid), {'displayName': name});
+    }
+    await batch.commit();
+  }
+
+  /// Đổi mật khẩu. Yêu cầu nhập lại mật khẩu hiện tại để xác thực
+  /// (Firebase bắt buộc đăng nhập gần đây để đổi mật khẩu).
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+
+    // Xác thực lại danh tính trước khi đổi mật khẩu
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // XỬ LÝ LỖI
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -362,6 +408,8 @@ class AuthService {
         return 'Network error. Please check your internet connection.';
       case 'user-disabled':
         return 'This account has been disabled.';
+      case 'requires-recent-login':
+        return 'Vui lòng đăng nhập lại rồi thử lại thao tác này.';
       default:
         return 'Something went wrong: ${e.message}';
     }

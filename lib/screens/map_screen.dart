@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'account_settings_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -76,7 +77,19 @@ class _MapScreenState extends State<MapScreen> {
               titleBg: const Color(0xFF77574D),
               titleColor: const Color(0xFFFFFFFF),
               children: [
-                _buildMenuItem(icon: Icons.person, label: "Profile", iconColor: const Color(0xFF77574D)),
+                _buildMenuItem(
+                  icon: Icons.person,
+                  label: "Profile",
+                  iconColor: const Color(0xFF77574D),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AccountSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 _buildMenuItem(icon: Icons.security, label: "Security & Privacy", iconColor: const Color(0xFF77574D)),
                 _buildMenuItem(icon: Icons.devices, label: "Linked Devices", iconColor: const Color(0xFF77574D)),
               ],
@@ -207,6 +220,7 @@ class _MapScreenState extends State<MapScreen> {
     required IconData icon,
     required String label,
     required Color iconColor,
+    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -218,7 +232,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: onTap ?? () {},
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
