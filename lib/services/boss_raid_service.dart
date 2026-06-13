@@ -202,11 +202,13 @@ class BossRaidService {
         .snapshots()
         .asyncMap((snap) async {
           if (snap.docs.isEmpty) {
-            // Fallback guild cũ: nếu có state boss phẳng thì dựng lại, else null.
+            // Fallback guild cũ: chỉ coi là có raid khi thực sự có activeBossId.
+            // KHÔNG dùng `bossHp` để phán đoán vì nó luôn mặc định 4500 → guild
+            // mới tạo (chưa có sự kiện nào) sẽ bị hiểu nhầm là đang có boss.
             final guildDoc = await _db.collection('guilds').doc(guildId).get();
             final guildData = guildDoc.data() ?? {};
-            if (guildData['activeBossId'] == null &&
-                guildData['bossHp'] == null) {
+            final activeBossId = guildData['activeBossId'] as String?;
+            if (activeBossId == null || activeBossId.isEmpty) {
               return null;
             }
             final boss = await _bossForGuildData(guildData);

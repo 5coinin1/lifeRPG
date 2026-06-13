@@ -821,6 +821,12 @@ class _HeroScreenState extends State<HeroScreen> {
     try {
       final account = await AuthService.getCurrentAccount();
       if (account == null) throw Exception("Bạn chưa đăng nhập.");
+      if (!account.isHero) {
+        throw Exception(
+          "Chỉ tài khoản con em (Hero) mới nhập được mã mời. "
+          "Bạn đang đăng nhập bằng tài khoản phụ huynh.",
+        );
+      }
 
       await AuthService.linkHeroByInviteCode(
         heroUid: account.uid,

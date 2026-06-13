@@ -300,17 +300,32 @@ class AuthService {
     required String heroUid,
     required String guardianUid,
   }) async {
-    final batch = _db.batch();
+    await _db.runTransaction((tx) async {
+      final heroRef = _heroes.doc(heroUid);
+      final guardianRef = _guardians.doc(guardianUid);
 
-    // Gán guardianId cho Hero
-    batch.update(_heroes.doc(heroUid), {'guardianId': guardianUid});
+      final heroSnap = await tx.get(heroRef);
+      final guardianSnap = await tx.get(guardianRef);
 
-    // Thêm heroUid vào heroIds của Guardian
-    batch.update(_guardians.doc(guardianUid), {
-      'heroIds': FieldValue.arrayUnion([heroUid]),
+      // Kiểm tra tồn tại để báo lỗi rõ ràng thay vì "no document to update".
+      if (!guardianSnap.exists) {
+        throw Exception('Không tìm thấy hồ sơ phụ huynh cho mã mời này.');
+      }
+      if (!heroSnap.exists) {
+        throw Exception(
+          'Không tìm thấy hồ sơ Hero của tài khoản đang đăng nhập. '
+          'Hãy chắc chắn bạn đang đăng nhập bằng tài khoản con em (Hero).',
+        );
+      }
+
+      // Gán guardianId cho Hero
+      tx.update(heroRef, {'guardianId': guardianUid});
+
+      // Thêm heroUid vào heroIds của Guardian (merge để an toàn nếu thiếu field)
+      tx.set(guardianRef, {
+        'heroIds': FieldValue.arrayUnion([heroUid]),
+      }, SetOptions(merge: true));
     });
-
-    await batch.commit();
   }
 
   /// Bỏ liên kết Hero khỏi Guardian

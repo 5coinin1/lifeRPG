@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 24),
 
                               Text(
-                                'QUEST LOG',
+                                'LIFE RPG',
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 30,
                                   fontWeight: FontWeight.bold,

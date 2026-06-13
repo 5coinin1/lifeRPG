@@ -41,9 +41,10 @@ class _CreateGuildScreenState extends State<CreateGuildScreen> {
 
     setState(() => _loading = true);
     try {
-      final guildId = await GuildService().createGuild(
+      final guildName = _nameCtrl.text.trim();
+      await GuildService().createGuild(
         ownerId: widget.guardianId,
-        name: _nameCtrl.text.trim(),
+        name: guildName,
         description: _descCtrl.text.trim(),
         iconName: _selectedIcon,
         tag: _tagCtrl.text.trim(),
@@ -53,8 +54,12 @@ class _CreateGuildScreenState extends State<CreateGuildScreen> {
         // Cập nhật guildId cho guardian hiện tại (đã làm trong service)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Guild "${_nameCtrl.text}" created! ID: $guildId'),
-            backgroundColor: const Color(0xFF388E3C),
+            content: Text(
+              'Đã tạo guild "$guildName" thành công!',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: const Color(0xFF1C1C17),
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.pop(context, true); // trả về true để Lobby refresh
@@ -62,7 +67,14 @@ class _CreateGuildScreenState extends State<CreateGuildScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: const Color(0xFFBA1A1A)),
+          SnackBar(
+            content: Text(
+              'Lỗi: ${e.toString().replaceFirst('Exception: ', '')}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: const Color(0xFFBA1A1A),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
